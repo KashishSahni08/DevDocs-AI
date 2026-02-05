@@ -46,7 +46,9 @@ export default function SignUp() {
 
         if (result.data.token) {
           localStorage.setItem("token", result.data.token);
+          localStorage.setItem("user", JSON.stringify(result.data.user));
         }
+          console.log("User stored:", localStorage.getItem("user"));
 
         router.push("/");
       } catch (err) {

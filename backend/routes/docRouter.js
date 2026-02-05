@@ -1,42 +1,78 @@
-// const express = require("express");
-// const router = express.Router();
-// const generate = require("../gemini");
+const express = require("express");
+const multer = require("multer");
 
-// router.post("/generate-docs", async (req, res) => {
-//   try {
-//     console.log("/doc/generate-docs HIT");
+const generate = require("../gemini");
+const Doc = require("../models/DocHistory");
+const auth = require("../middleware/auth");
 
-//     const { projectName, features, techStack, apis, modules } = req.body;
+const router = express.Router();
 
-//     if (!projectName) {
-//       return res.status(400).json({ error: "Project name is required" });
-//     }
+/* ===============================
+   POST → GENERATE DOCS
+================================ */
+router.post("/generate-docs", auth, async (req, res) => {
+  try {
+    const { prompt, title } = req.body;
 
-//     const prompt = `
-// Generate professional project documentation.
+    if (!prompt) {
+      return res.status(400).json({ error: "Prompt required" });
+    }
 
-// Project Name: ${projectName}
-// Features: ${features}
-// Tech Stack: ${techStack}
-// APIs: ${apis}
-// Modules: ${modules}
+    const docs = await generate(prompt);
 
-// Include:
-// 1. README
-// 2. Installation
-// 3. Usage
-// 4. API Docs
-// 5. Modules
-// `;
+    const savedDoc = await Doc.create({
+      userId: req.user._id,
+      title: title || "Untitled",
+      sourceType: "text",
+      inputPrompt: prompt,
+      generateDocs: docs,
+      filesUploaded: [],
+    });
 
-//     const documentation = await generate(prompt);
+    res.json(savedDoc);
 
-//     res.status(200).json({ documentation });
+  } catch (err) {
+    console.error("DOC ERROR:", err);
 
-//   } catch (error) {
-//     console.error(" Route Error:", error.message);
-//     res.status(500).json({ error: error.message });
-//   }
-// });
+    res.status(500).json({ error: "Gemini generation failed" });
+  }
+});
 
-// module.exports = router;
+/* ===============================
+   GET → HISTORY
+================================ */
+router.get("/history", auth, async (req, res) => {
+  try {
+    const docs = await Doc.find({
+      userId: req.user._id,
+    }).sort({ createdAt: -1 });
+
+    res.json(docs);
+
+  } catch (err) {
+    res.status(500).json({ error: "History fetch failed" });
+  }
+});
+
+/* ===============================
+   GET → SINGLE
+================================ */
+router.get("/history/single/:id", auth, async (req, res) => {
+  try {
+    const doc = await Doc.findOne({
+      _id: req.params.id,
+      userId: req.user._id,
+    });
+
+    if (!doc) {
+      return res.status(404).json({ error: "Doc not found" });
+    }
+
+    res.json(doc);
+
+  } catch (err) {
+    res.status(500).json({ error: "Fetch failed" });
+  }
+});
+
+module.exports = router;

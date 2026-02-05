@@ -37,11 +37,21 @@ export default function Login() {
           values
         );
 
+        console.log("Login Response:", result.data);
+        console.log("Token received:", result.data.token);
+
         toast.success("Login Successful");
 
         if (result.data.token) {
           localStorage.setItem("token", result.data.token);
+          localStorage.setItem("user", JSON.stringify(result.data.user)
+        );
+          console.log("Token stored in localStorage:", localStorage.getItem("token"));
+          console.log("User stored:", localStorage.getItem("user"));
           router.push("/");
+        } else {
+          console.error("No token in response");
+          toast.error("Token not received from server");
         }
       } catch (err) {
         if (err.response) {
